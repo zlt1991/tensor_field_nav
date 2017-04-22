@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!--
+    - Base      : kobuki
+    - Stacks    : hexagons
+    - 3d Sensor : kinect
+-->    
+<robot name="turtlebot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find turtlebot_description)/urdf/turtlebot_library.urdf.xacro" />
+  
+  <kobuki/>
+  <stack_hexagons                 parent="base_link"/>
+  <sensor_asus_xtion_pro          parent="base_link"/>
+<gazebo>
+<plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so"> 
+    <alwaysOn>true</alwaysOn>
+    <updateRate>500.0</updateRate>
+    <bodyName>base_footprint</bodyName>
+    <topicName>base_pose_ground_truth</topicName>
+    <gaussianNoise>0</gaussianNoise>
+    <frameName>map</frameName>
+    <xyzOffsets>0 0 0</xyzOffsets> 
+    <rpyOffsets>0 0 0</rpyOffsets>
+  </plugin>
+</gazebo>
+</robot>

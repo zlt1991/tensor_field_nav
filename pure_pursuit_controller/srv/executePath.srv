@@ -1,0 +1,5 @@
+nav_msgs/Path curPath
+bool ifFirstPoint
+---
+
+bool success

@@ -1,0 +1,12 @@
+<launch>
+        <include file="$(find tensor_field_nav_core)/launch/turtlebot_simulation.launch" />
+	<node pkg="tensor_field_nav_core" type="tensor_field_nav_core_node" name="tensor_field_navigation" respawn="false" output="screen" />
+	<node pkg="tensor_field_nav_core" type="listen.py" name="listen" respawn="false"/>
+		
+	<include file="$(find pure_pursuit_controller)/launch/pure_pursuit_controller.launch" />
+	<node pkg="odom_tf_publish" type="tf_broadcaster_node" name="tf_broadcaster" respawn="false"/>
+
+        <node pkg="rviz" name="rviz" type="rviz" args="-d $(find tensor_field_nav_core)/rviz/tf_rviz.rviz" />
+	<!--<include file="$(find octomap_server)/launch/octomap_mapping.launch" />-->
+        
+</launch>
