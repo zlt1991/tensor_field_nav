@@ -29,4 +29,11 @@ catkin_make -DCATKIN_WHITELIST_PACKAGES="pure_pursuit_controller"
 
 catkin_make -DCATKIN_WHITELIST_PACKAGES=""
 
+## Run
+roslaunch tensor_field_nav_core complete_run.launch
+
+roslaunch octomap_server octomap_mapping.launch
+
+
+
 
