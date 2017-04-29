@@ -1964,7 +1964,7 @@ void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
         for(int j=0; j<dirMap.info.width;j++){
             if(i>0 && i<dirMap.info.height-1 && j>0 && j<dirMap.info.width-1){
                 if (msg.data[msg.info.width*(i-1)+j-1]>50)
-                    dirMap.data.push_back(255);
+                    dirMap.data.push_back(100);
                 else
                     dirMap.data.push_back(0);
             }else
@@ -1972,13 +1972,13 @@ void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
         }
     for(int i=0;i<dirMap.info.height;i++){
         for(int j=0;j<dirMap.info.width;j++){
-            if(dirMap.data[i*dirMap.info.width+j]==255)
+            if(dirMap.data[i*dirMap.info.width+j]==100)
             {
                 int x_min=max(j-2,0); int x_max=min(dirMap.info.width-1,j+2);
                 int y_min=max(i-2,0); int y_max=min(dirMap.info.height-1,i+2);
                 for(int l=y_min;l<=y_max;l++){
                     for(int n=x_min;n<=x_max;n++)
-                        dirMap.data[l*dirMap.info.width+n]==255;
+                        dirMap.data[l*dirMap.info.width+n]==100;
                 }
             }
         }
@@ -2263,7 +2263,10 @@ void TfCore::get_obstacles_contour(){
                   rightTop[1]=tmp_field_point.y;
               }
               tmp_field.push_back(tmp_field_point);
-              img.at<uchar>(i,j)=dirMap.data[dirMap.info.width*i+j];
+              if(dirMap.data[dirMap.info.width*i+j]==100)
+                 img.at<uchar>(i,j)=255;
+              else
+                 img.at<uchar>(i,j)=0;
           }
           dirMapInWorld.push_back(tmp_world);
           dirMap2Field.push_back(tmp_field);
