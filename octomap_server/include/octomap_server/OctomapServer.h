@@ -65,10 +65,6 @@
 #include <octomap_ros/conversions.h>
 #include <octomap/octomap.h>
 #include <octomap/OcTreeKey.h>
-//---zlt insert
-#include "octomap_server/FrontierPoints.h"
-
-//zlt---
 
 #define COLOR_OCTOMAP_SERVER // turned off here, turned on identical ColorOctomapServer.h - easier maintenance, only maintain OctomapServer and then copy and paste to ColorOctomapServer and change define. There are prettier ways to do this, but this works for now
 //#define MY_OCTOMAP_SERVER
