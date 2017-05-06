@@ -47,12 +47,30 @@ include_directories(
 )
 
 
-add_library(purePursuitController
+add_library(${PROJECT_NAME}
    src/purePursuitController.cpp include/pure_pursuit_controller/purePursuitController.h
 )
 
 add_executable(pure_pursuit_controller_node src/pure_pursuit_controller_node.cpp)
 
-target_link_libraries(pure_pursuit_controller_node purePursuitController
+target_link_libraries(pure_pursuit_controller_node ${PROJECT_NAME} 
    ${catkin_LIBRARIES}
  )
+
+
+# install targets:
+install(TARGETS   ${PROJECT_NANE} pure_pursuit_controller_node
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+

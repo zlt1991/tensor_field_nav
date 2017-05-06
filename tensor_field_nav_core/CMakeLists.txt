@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   rviz
   message_generation
+  pure_pursuit_controller
+  octomap_tensor_field
 )
 
 ## System dependencies are found with CMake's conventions
@@ -114,7 +116,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES tensor_field_nav_core
-  CATKIN_DEPENDS  roscpp cv_bridge tf image_transport roscpp sensor_msgs std_msgs geometry_msgs rviz  eigen_conversions
+  CATKIN_DEPENDS  roscpp cv_bridge tf image_transport roscpp sensor_msgs std_msgs geometry_msgs rviz  eigen_conversions octomap_tensor_field pure_pursuit_controller
   DEPENDS system_lib
 )
 find_package(OpenCV REQUIRED)
@@ -163,10 +165,10 @@ target_link_libraries(tensor_field_nav_core_node tensor_field_nav_core)
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+ install(PROGRAMS
+   scripts/listen.py
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS directional_field_to_rviz directional_field_to_rviz_node
@@ -189,6 +191,23 @@ target_link_libraries(tensor_field_nav_core_node tensor_field_nav_core)
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+# install targets:
+install(TARGETS ${PROJECT_NAME}
+  tensor_field_nav_core_node
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
 #############
 ## Testing ##
 #############
@@ -201,3 +220,4 @@ target_link_libraries(tensor_field_nav_core_node tensor_field_nav_core)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
