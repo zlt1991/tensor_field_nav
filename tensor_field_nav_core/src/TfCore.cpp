@@ -1991,7 +1991,7 @@ void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
     }
 }
 
-void TfCore::frontier_point_callback(const octomap_server::FrontierPoints &msg){
+void TfCore::frontier_point_callback(const octomap_tensor_field::FrontierPoints &msg){
     frontierPoints=msg;
 }
 

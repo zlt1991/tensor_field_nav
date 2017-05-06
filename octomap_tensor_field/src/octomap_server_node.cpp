@@ -37,7 +37,7 @@
 
 
 #include <ros/ros.h>
-#include <octomap_server/OctomapServer.h>
+#include <octomap_tensor_field/OctomapServer.h>
 
 #define USAGE "\nUSAGE: octomap_server <map.[bt|ot]>\n" \
         "  map.bt: inital octomap 3D map file to read\n"

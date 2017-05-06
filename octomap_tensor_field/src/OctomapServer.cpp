@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <octomap_server/OctomapServer.h>
+#include <octomap_tensor_field/OctomapServer.h>
 
 using namespace octomap;
 using octomap_msgs::Octomap;
@@ -159,7 +159,7 @@ OctomapServer::OctomapServer(ros::NodeHandle private_nh_)
  
  //zlt--- insert
   m_frontiermarkerPub=m_nh.advertise<visualization_msgs::MarkerArray>("frontier_cells_vis_array", 1, m_latchedTopics);
-  m_frontierPointsPub=m_nh.advertise<octomap_server::FrontierPoints>("frontier_points", 1, m_latchedTopics);
+  m_frontierPointsPub=m_nh.advertise<octomap_tensor_field::FrontierPoints>("frontier_points", 1, m_latchedTopics);
   //test=m_nh.subscribe("test",1,&OctomapServer::test_msg,this);
   //zlt
 

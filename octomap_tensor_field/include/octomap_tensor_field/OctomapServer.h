@@ -40,7 +40,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <std_srvs/Empty.h>
 #include <dynamic_reconfigure/server.h>
-#include <octomap_server/OctomapServerConfig.h>
+#include <octomap_tensor_field/OctomapServerConfig.h>
 
 #include <pcl/point_types.h>
 #include <pcl/conversions.h>
@@ -65,12 +65,12 @@
 #include <octomap_ros/conversions.h>
 #include <octomap/octomap.h>
 #include <octomap/OcTreeKey.h>
-#include <octomap_server/FrontierPoints.h>
+#include <octomap_tensor_field/FrontierPoints.h>
 
 #define COLOR_OCTOMAP_SERVER // turned off here, turned on identical ColorOctomapServer.h - easier maintenance, only maintain OctomapServer and then copy and paste to ColorOctomapServer and change define. There are prettier ways to do this, but this works for now
 //#define MY_OCTOMAP_SERVER
 //#ifdef MY_OCTOMAP_SERVER
-#include "octomap_server/MyOcTree.h"
+#include "octomap_tensor_field/MyOcTree.h"
 //#endif
 
 #ifdef COLOR_OCTOMAP_SERVER
@@ -207,7 +207,7 @@ protected:
   //zlt---insert
   ros::Publisher m_frontiermarkerPub;
   //octomap::point3d_collection m_frontier_points;
-  octomap_server::FrontierPoints m_frontier_points;
+  octomap_tensor_field::FrontierPoints m_frontier_points;
   ros::Publisher m_frontierPointsPub;
   //ros::Subscriber test;
   //---zlt

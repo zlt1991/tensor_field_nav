@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(octomap_server)
+project(octomap_tensor_field)
 
 set(PACKAGE_DEPENDENCIES
   roscpp
@@ -66,7 +66,7 @@ set(LINK_LIBS
   ${PCL_LIBRARIES}
 )
 
-set(Head include/octomap_server/MyOcTree.h include/octomap_server/OctomapServer.h)
+set(Head include/octomap_tensor_field/MyOcTree.h include/octomap_tensor_field/OctomapServer.h)
 add_library(${PROJECT_NAME} src/OctomapServer.cpp src/MyOcTree.cpp ${Head})
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)

@@ -1,4 +1,4 @@
-#include <octomap_server/MyOcTree.h>
+#include <octomap_tensor_field/MyOcTree.h>
 
 namespace octomap {
 
