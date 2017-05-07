@@ -12,23 +12,11 @@ This package relies on some third dependencies, it requires installation of CUDA
 ## Download and Installation
 
 Dowload tensor_field_nav package with the following command to your catkin workspace.
-
-git clone http://github.com/zlt1991/tensor_field_nav.git
-
-
-you should first check the executive authority of some files:
-
-sudo chmod +x octomap_server/cfg/OctomapServer.cfg
-
-sudo chmod +x tensor_field_nav_core/listen.py
-
-
-you can then compile it with:
-
-catkin_make -DCATKIN_WHITELIST_PACKAGES="pure_pursuit_controller"
-
-catkin_make -DCATKIN_WHITELIST_PACKAGES=""
-
+```
+catkin_ws/src$ git clone 
+catkin_ws/src$ cd ..
+catkin_ws$ catkin_make
+```
 ## Run
 roslaunch tensor_field_nav_core complete_run.launch
 
