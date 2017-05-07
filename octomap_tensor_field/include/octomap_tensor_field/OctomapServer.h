@@ -65,7 +65,7 @@
 #include <octomap_ros/conversions.h>
 #include <octomap/octomap.h>
 #include <octomap/OcTreeKey.h>
-#include <octomap_tensor_field/FrontierPoints.h>
+#include <std_msgs/Float64MultiArray.h>
 
 #define COLOR_OCTOMAP_SERVER // turned off here, turned on identical ColorOctomapServer.h - easier maintenance, only maintain OctomapServer and then copy and paste to ColorOctomapServer and change define. There are prettier ways to do this, but this works for now
 //#define MY_OCTOMAP_SERVER
@@ -207,7 +207,7 @@ protected:
   //zlt---insert
   ros::Publisher m_frontiermarkerPub;
   //octomap::point3d_collection m_frontier_points;
-  octomap_tensor_field::FrontierPoints m_frontier_points;
+  std_msgs::Float64MultiArray m_frontier_points;
   ros::Publisher m_frontierPointsPub;
   //ros::Subscriber test;
   //---zlt

@@ -386,10 +386,14 @@ int PurePursuitControllerNode::getNextWayPoint(int wayPoint)
         }else
         {
             if(_currentReferencePath.poses.size()>3){
-                if (i >= _currentReferencePath.poses.size()-3)
-                {
-                    //ROS_INFO("Path finish!");
-                    isFinish = true;
+                if(ifGoTrisector){
+                    if (i == _currentReferencePath.poses.size()-1)
+                        isFinish = true;
+
+                }else{
+                    if (i >= _currentReferencePath.poses.size()-3)
+                        isFinish = true;
+
                 }
             }
         }
@@ -422,7 +426,7 @@ void PurePursuitControllerNode::getParameters()
   _nodeHandle.param<double>("pure_pursuit_controller/controller/frequency", _frequency, 20.0);
   _nodeHandle.param<int>("pure_pursuit_controller/controller/initial_waypoint", _initialWayPoint, -1);
   _nodeHandle.param<double>("pure_pursuit_controller/controller/velocity", _velocity, 0.2);
-  _nodeHandle.param<double>("pure_pursuit_controller/controller/look_ahead_ratio", _lookAheadRatio, 4.0);
+  _nodeHandle.param<double>("pure_pursuit_controller/controller/look_ahead_ratio", _lookAheadRatio, 3.0);
   _nodeHandle.param<double>("pure_pursuit_controller/controller/epsilon", _epsilon, 1e-6);
 }
 

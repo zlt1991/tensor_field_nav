@@ -3,7 +3,7 @@
 #define NPN 64
 #define NMESH  100
 #define NPIX  1024
-#define SCALE 4.0
+#define SCALE 2.0
 #define REALWINSIZE NPIX
 
 

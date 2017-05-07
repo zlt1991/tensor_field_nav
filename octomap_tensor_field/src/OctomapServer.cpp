@@ -159,7 +159,7 @@ OctomapServer::OctomapServer(ros::NodeHandle private_nh_)
  
  //zlt--- insert
   m_frontiermarkerPub=m_nh.advertise<visualization_msgs::MarkerArray>("frontier_cells_vis_array", 1, m_latchedTopics);
-  m_frontierPointsPub=m_nh.advertise<octomap_tensor_field::FrontierPoints>("frontier_points", 1, m_latchedTopics);
+  m_frontierPointsPub=m_nh.advertise<std_msgs::Float64MultiArray>("frontier_points", 1, m_latchedTopics);
   //test=m_nh.subscribe("test",1,&OctomapServer::test_msg,this);
   //zlt
 
@@ -527,7 +527,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 
   KeySet frontier_cells,free_cells;
 //  octomap::point3d_list frontier_points;
-  m_frontier_points.points.clear();
+  m_frontier_points.data.clear();
 //---zlt
 
 
@@ -678,9 +678,9 @@ void OctomapServer::publishAll(const ros::Time& rostime){
                   if (m_octree->coordToKeyChecked(point, key))
                   {
                     frontier_cells.insert(key);
-                    m_frontier_points.points.push_back(cubeCenter.x);
-                    m_frontier_points.points.push_back(cubeCenter.y);
-                    m_frontier_points.points.push_back(cubeCenter.z);
+                    m_frontier_points.data.push_back(cubeCenter.x);
+                    m_frontier_points.data.push_back(cubeCenter.y);
+                    m_frontier_points.data.push_back(cubeCenter.z);
                   }
               }
             }

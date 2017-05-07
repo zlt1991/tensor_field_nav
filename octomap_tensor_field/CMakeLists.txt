@@ -20,10 +20,10 @@ set(PACKAGE_DEPENDENCIES
 find_package(catkin REQUIRED COMPONENTS ${PACKAGE_DEPENDENCIES})
 
 
-add_message_files(
-   FILES
-   FrontierPoints.msg
-)
+#add_message_files(
+#   FILES
+#   FrontierPoints.msg
+#)
 
 
 generate_messages(

@@ -29,7 +29,7 @@
 #include "pure_pursuit_controller/cancelPath.h"
 #include "pure_pursuit_controller/cutPath.h"
 #include "pure_pursuit_controller/recoverPath.h"
-#include "octomap_tensor_field/FrontierPoints.h"
+#include "std_msgs/Float64MultiArray.h"
 #include "tensor_field_nav_core/CalPathInfoGain.h"
 
 // CTfCore
@@ -145,7 +145,7 @@ public:
     ros::ServiceClient reqCalDegptPathsInfoClient;
 
     unsigned char  *rgb_im;
-    octomap_tensor_field::FrontierPoints frontierPoints;
+    std_msgs::Float64MultiArray frontierPoints;
 
     bool ifFinish_goTri;
     bool ifFinish_recover;
@@ -253,7 +253,7 @@ public:
     void finishTurn_callback(const std_msgs::String &msg);
     void gridMap_callback(const nav_msgs::OccupancyGrid &msg);
     void goTri_callback(const std_msgs::String &msg);
-    void frontier_point_callback(const octomap_tensor_field::FrontierPoints &msg);
+    void frontier_point_callback(const std_msgs::Float64MultiArray &msg);
     void listen_to_robot_loc();
     void add_robot_wayPoints();
     void add_separatrix_points_toRobot(Trajectory * target_traj);

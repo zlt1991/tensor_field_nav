@@ -1991,7 +1991,7 @@ void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
     }
 }
 
-void TfCore::frontier_point_callback(const octomap_tensor_field::FrontierPoints &msg){
+void TfCore::frontier_point_callback(const std_msgs::Float64MultiArray &msg){
     frontierPoints=msg;
 }
 
@@ -2058,10 +2058,11 @@ void TfCore::play_all_frames()
         {
             gen_separatrix();
             cal_sep_infoGain();
+            //usleep(0.2*1000000);
         }
         DrawGLScene(GL_RENDER);
         usleep(interFrameTime*1000000);
-        std::cout<<"t: "<<t<<std::endl;
+//        std::cout<<"t: "<<t<<std::endl;
         t++;
     }
 }
@@ -2124,7 +2125,7 @@ bool TfCore::check_bypass_trisector(){
                         target_out_sep=k;
                     }
                 }
-                if(cur_out_dir_dot_max>0.7 && cur_in_dir_dot_min<-0.7 && target_in_sep!=target_out_sep && cur_min_dist*realWorld_to_field_scale<2.5){
+                if(cur_out_dir_dot_max>0.7 && cur_in_dir_dot_min<-0.7 && target_in_sep!=target_out_sep && cur_min_dist*realWorld_to_field_scale<0.8){
                     tmp_validTriDegpts.push_back(validDegpts[i]);
                     all_min_dists.push_back(cur_min_dist);
                     all_indexes.push_back(i);
@@ -2327,9 +2328,9 @@ void TfCore::cut_robot_path(){
 
 void TfCore::cal_sep_infoGain(){
     degptsPathsInfoGain.clear();
-    float *pointCollection=new float[frontierPoints.points.size()];
-    for(int i=0;i<frontierPoints.points.size();i++)
-        pointCollection[i]=frontierPoints.points[i];
+    float *pointCollection=new float[frontierPoints.data.size()];
+    for(int i=0;i<frontierPoints.data.size();i++)
+        pointCollection[i]=frontierPoints.data[i];
     for(int i=0;i<separatrices->evenstreamlines->ntrajs;i++){
         Trajectory *cur_traj = separatrices->evenstreamlines->trajs[i];
         float *curPathPoints=new float[cur_traj->nlinesegs*2];
@@ -2338,7 +2339,7 @@ void TfCore::cal_sep_infoGain(){
             curPathPoints[2*j+1]=(cur_traj->linesegs[j].start[1]-realWorld_to_field_offset_x)*realWorld_to_field_scale;
         }
         int *curPathInfoGain_cu=new int[cur_traj->nlinesegs];
-        calPathInfoGain(pointCollection, curPathPoints, curPathInfoGain_cu,frontierPoints.points.size()/3,cur_traj->nlinesegs);
+        calPathInfoGain(pointCollection, curPathPoints, curPathInfoGain_cu,frontierPoints.data.size()/3,cur_traj->nlinesegs);
         std::vector<int> curPathInfoGain;
         float averageInfoGain=0;
         int maxInfoGain= 0;
