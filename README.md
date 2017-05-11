@@ -20,7 +20,7 @@ catkin_ws$ catkin_make
 ## Run
 roslaunch tensor_field_nav_core complete_run.launch
 
-roslaunch octomap_server octomap_mapping.launch
+roslaunch octomap_tensor_field octomap_mapping.launch
 
 
 
