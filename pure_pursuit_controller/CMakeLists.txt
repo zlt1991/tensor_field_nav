@@ -10,8 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   actionlib
   move_base_msgs
-  moveit_msgs
-  moveit_ros_planning_interface
   message_generation
 )
 
