@@ -58,6 +58,7 @@ catkin_package(
 
 
 include_directories(
+        include
 	src
 	${catkin_INCLUDE_DIRS}
 	${Eigen_INCLUDE_DIRS})
