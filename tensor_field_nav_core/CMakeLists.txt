@@ -20,8 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   rviz
   message_generation
-  pure_pursuit_controller
-  octomap_tensor_field
 )
 
 ## System dependencies are found with CMake's conventions
@@ -116,7 +114,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES tensor_field_nav_core
-  CATKIN_DEPENDS  roscpp cv_bridge tf image_transport roscpp sensor_msgs std_msgs geometry_msgs rviz  eigen_conversions octomap_tensor_field pure_pursuit_controller
+  CATKIN_DEPENDS  roscpp cv_bridge tf image_transport roscpp sensor_msgs std_msgs geometry_msgs rviz  eigen_conversions
   DEPENDS system_lib
 )
 find_package(OpenCV REQUIRED)
