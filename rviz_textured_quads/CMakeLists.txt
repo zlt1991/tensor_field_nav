@@ -100,10 +100,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
   FILES_MATCHING PATTERN "*.h"
 )
 
-install(DIRECTORY textures
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz_textured_quads_custom
-)
-
 install(FILES
   mesh_display_custom_plugin_description.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
