@@ -117,6 +117,9 @@ catkin_package(
   CATKIN_DEPENDS  roscpp cv_bridge tf image_transport roscpp sensor_msgs std_msgs geometry_msgs rviz  eigen_conversions
   DEPENDS system_lib
 )
+
+set(CUDA_TOOLKIT_ROOT_DIR "$ENV{CUDA_TOOLKIT_ROOT_DIR}")
+
 find_package(OpenCV REQUIRED)
 find_package(Qt4 REQUIRED QtCore)
 find_package(CUDA REQUIRED)
@@ -206,16 +209,4 @@ install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
-#############
-## Testing ##
-#############
-
-## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_directional_field_to_rviz.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
-
-## Add folders to be run by python nosetests
-# catkin_add_nosetests(test)
 
