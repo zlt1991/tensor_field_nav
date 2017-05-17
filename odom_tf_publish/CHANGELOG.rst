@@ -2,8 +2,8 @@
 Changelog for package odom_tf_publish
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.1 (2017-05-17)
+------------------
 * update
 * update
 * fist submit

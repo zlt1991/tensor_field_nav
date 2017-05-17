@@ -1,6 +1,6 @@
 <package>
   <name>octomap_tensor_field</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>
     octomap_tensor_field derives frome octomap_server package, and only makes some change for tensor field navigation. It loads a 3D map (as Octree-based OctoMap) and distributes it to other nodes in a compact binary format.
     It also allows to incrementally build 3D OctoMaps.

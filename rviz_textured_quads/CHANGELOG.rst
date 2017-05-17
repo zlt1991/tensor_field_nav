@@ -2,8 +2,8 @@
 Changelog for package rviz_textured_quads
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.1 (2017-05-17)
+------------------
 * Update CMakeLists.txt
 * Update package.xml
 * Update package.xml

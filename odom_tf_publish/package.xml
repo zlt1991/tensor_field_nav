@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>odom_tf_publish</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>The odom_tf_publish package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 

@@ -2,8 +2,8 @@
 Changelog for package pure_pursuit_controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.1 (2017-05-17)
+------------------
 * update
 * update
 * update
