@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>rviz_textured_quads</name>
-  <version>0.1.0</version>
+  <version>0.0.0</version>
   <description>RVIZ Image Mesh Plugin</description>
   <maintainer email="mohit@u.nus.edu">Mohit Shridhar</maintainer>
   <license>TORC</license>
