@@ -53,6 +53,7 @@
   <build_depend>rviz</build_depend>
   <build_depend>octomap_tensor_field</build_depend>
   <build_depend>pure_pursuit_controller</build_depend>
+  <build_depend>cuda</build_depend>
   <run_depend>pure_pursuit_controller</run_depend>
   <run_depend>octomap_tensor_field</run_depend>
   <run_depend>eigen_conversions</run_depend>
@@ -65,6 +66,7 @@
   <run_depend>std_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>rviz</run_depend>
+  <run_depend>cuda</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
