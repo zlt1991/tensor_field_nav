@@ -118,7 +118,7 @@ catkin_package(
   DEPENDS system_lib
 )
 
-set(CUDA_TOOLKIT_ROOT_DIR "$ENV{CUDA_TOOLKIT_ROOT_DIR}")
+#set(CUDA_TOOLKIT_ROOT_DIR "$ENV{CUDA_TOOLKIT_ROOT_DIR}")
 
 find_package(OpenCV REQUIRED)
 find_package(Qt4 REQUIRED QtCore)
