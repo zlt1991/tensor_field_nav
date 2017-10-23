@@ -1,3 +1,6 @@
+/***
+ Basic structure for list of streamlines
+***/
 #include "tensor_field_nav_core/TrajectoryList.h"
 
 // The similar list operations

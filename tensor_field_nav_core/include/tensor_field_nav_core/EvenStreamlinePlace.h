@@ -1,3 +1,6 @@
+/***
+ Implementation of streamline class for path advection and separatrice generation
+ ***/
 #ifndef _EVENSTREAMLINEPLACE_H
 #define _EVENSTREAMLINEPLACE_H
 #include "dataStructure.h"
@@ -29,8 +32,9 @@ public:
 	/*to record the sample that stops the tracing of a tensor line*/
 	int which_triangle;
 	double samp[2];
-
-
+    icVector2 outside_push;
+    bool isAdd_push;
+    float push_rank;
 
 	//////////////////////////////////////////////////////////////////////////
 	icVector2 tenline_dir_global;  
@@ -88,13 +92,8 @@ public:
 	bool is_in_reg_cell(int id, double x, double y);
 	void reverse_streamline(int streamlineid);
     void set_default_parameters();
-	void reset_placement_quad();
-    void init_samplelist_in_cell();
     void init_major_line_info();
-	void add_sample_to_cell(int triangle, int which_traj, 
-		int which_sample, bool fieldtype);
-        void reset();
-	SampleListInTriangle * extend_cell_samplelist(SampleListInTriangle *samplepts, int nsamples);
+    void reset();
 };
 #endif
 

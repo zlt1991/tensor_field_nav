@@ -1,3 +1,6 @@
+/***
+ Implementation of multithreading class for speeding tensor field computing and updating
+ ***/
 #include "tensor_field_nav_core/ParaThread.h"
 #include "tensor_field_nav_core/TfCore.h"
 #include <iostream>

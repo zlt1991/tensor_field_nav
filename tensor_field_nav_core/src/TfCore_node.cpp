@@ -1,3 +1,6 @@
+/***
+ Main function
+ ***/
 #include <GL/glut.h>
 #include <stdlib.h>
 #include <math.h>
@@ -102,8 +105,6 @@ int main(int argc, char** argv)
         if(tfCore->isReceiveNewMap)
             tfCore->set_obstacles();
         tfCore->DrawGLScene(GL_RENDER);
-        if(tfCore->recoverMode)
-            tfCore->recover_robot_state();
     }
 	return 0;
 }

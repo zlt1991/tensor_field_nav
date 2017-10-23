@@ -1,3 +1,6 @@
+/***
+ Implementation of multithreading class for speeding tensor field computing and updating
+ ***/
 #pragma once
 #include <QtCore/QThread>
 #include <QtCore/QMutex>

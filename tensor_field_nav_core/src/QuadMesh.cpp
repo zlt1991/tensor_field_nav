@@ -1,3 +1,6 @@
+/***
+ Basic data structure for tensor field
+ ***/
 #include "tensor_field_nav_core/QuadMesh.h"
 
 QuadMesh::QuadMesh()

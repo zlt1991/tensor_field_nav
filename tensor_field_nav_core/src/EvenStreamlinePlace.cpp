@@ -1,3 +1,7 @@
+/***
+ Implementation of streamline class for path advection and separatrice generation
+ ***/
+
 #include "tensor_field_nav_core/EvenStreamlinePlace.h"
 #include "tensor_field_nav_core/TfCore.h"
 EvenStreamlinePlace::EvenStreamlinePlace( int initsize=300)
@@ -20,10 +24,12 @@ EvenStreamlinePlace::EvenStreamlinePlace( int initsize=300)
             exit(-1);
         }
     }
-
+    isAdd_push=false;
+    push_rank=0.0;
     trianglelist = NULL;
     majorDensity = 13.5;
     mintenline_length=5.9;
+    outside_push=icVector2(1,1);
 }
 
 EvenStreamlinePlace::~EvenStreamlinePlace()
@@ -92,6 +98,8 @@ void EvenStreamlinePlace::setTfCore(TfCore *tfCore){
     m_tfCore=tfCore;
     quadmesh=m_tfCore->quadmesh;
 }
+
+// compute the tensor inside a quad by binear interpolation
 void EvenStreamlinePlace::compute_tensor_at_quad(int face, double x, double y, icMatrix2x2 &ten)
 {
 	//double xstart, xend, ystart, yend;
@@ -185,6 +193,7 @@ void  EvenStreamlinePlace::reset(){
     (*samplepts)->reset();
 }
 
+//locally convert tensor field into vector field based on robot forward direction
 void EvenStreamlinePlace::get_tenvec_quad(double cur_p[2], double vec[2])
 {
 	double t[4];
@@ -203,11 +212,21 @@ void EvenStreamlinePlace::get_tenvec_quad(double cur_p[2], double vec[2])
 	re = dot(tenline_dir_global, ev[0]);
 	if(re<0) 
 		ev[0] = -ev[0];
-	//normalize(ev[0]);
 
+    //a simple way for avoding collision, keep the robot a distance to obstacles
+    if(isAdd_push){
+        if(push_rank<0.1)
+            ev[0]=outside_push;
+        else
+            ev[0]=ev[0]+push_rank*outside_push;
+   //     isAdd_push=false;
+    }
+    normalize(ev[0]);
 	vec[0] = ev[0].entry[0];
 	vec[1] = ev[0].entry[1];
 }
+
+// Runge-kutta iteration for path generation
 void EvenStreamlinePlace::RK23_2d(double pre_p[2], double next_p[2], double &hstep_loc, double &hnext,
 			 double eps, double &eps_did)
 {
@@ -284,6 +303,7 @@ bool EvenStreamlinePlace::get_nextpt_RK23_ten_quad(double first[2], double secon
 		if(eps_did<eps)
 			break;
 	}
+    isAdd_push=false;
 	return true;
 }
 
@@ -411,6 +431,7 @@ void EvenStreamlinePlace::reset_dist(DynList_Int *trianglelist)
 	}
 }
 
+//compare the current point with the sampling point on itself!
 bool EvenStreamlinePlace::close_to_cur_samplePt(double p[2], int triangle, SamplePt **samples, int num_samples,
 												double separate_dist, double discsize, double sample_interval)
 {
@@ -461,6 +482,7 @@ bool EvenStreamlinePlace::close_to_cur_samplePt(double p[2], int triangle, Sampl
 	return false;
 }
 
+//robot path generation
 int EvenStreamlinePlace::trace_majRoad_in_quad(int &face_id, double globalp[2], int type, 
 					double dtest, double loopsep, double dist2sing, 
 					double sample_interval, double discsize, int &flag)
@@ -517,7 +539,58 @@ int EvenStreamlinePlace::trace_majRoad_in_quad(int &face_id, double globalp[2], 
 
 			pre_point[0] = globalp[0];
 			pre_point[1] = globalp[1];
-			
+            //if robot' path was cut by obstacles, then recompute the path to ensure robot safety.
+            //Detecting the close contour of obstacles and adding a perpendicular force
+            if(m_tfCore->reGenPath){
+                double min_dist=std::numeric_limits<double>::max();
+                double target_x_dist,target_y_dist;
+                int target_j,target_i;
+                for(int i=0;i<m_tfCore->contours2Field.size();i++)
+                {
+                    for (int j=0;j<m_tfCore->contours2Field[i].size();j++)
+                    {
+                        double x_dist=pre_point[0]-m_tfCore->contours2Field[i][j].x;
+                        double y_dist=pre_point[1]-m_tfCore->contours2Field[i][j].y;
+                        double cur_dist=sqrt(x_dist*x_dist+y_dist*y_dist);
+                        if(min_dist>cur_dist)
+                        {
+                            min_dist=cur_dist;
+                            target_i=i;
+                            target_j=j;
+                            target_x_dist=x_dist;
+                            target_y_dist=y_dist;
+                        }
+                    }
+                }
+                min_dist=min_dist*m_tfCore->realWorld_to_field_scale;
+                if (min_dist<DANGERDIST)
+                {
+                    if (min_dist<DANGERDIST/3)
+                        push_rank=0;
+                    else
+                        push_rank=(DANGERDIST-min_dist)/DANGERDIST*1.5+0.5;
+                    icVector2 tmp_dir(target_x_dist,target_y_dist);
+                    //
+                    std::vector<cv::Point2f> points;
+                    if(target_j<3){
+                       for(int k=0;k<5;k++)
+                           points.push_back(cv::Point2f(m_tfCore->contours2Field[target_i][k].x,m_tfCore->contours2Field[target_i][k].y));
+                    }else if(target_j>m_tfCore->contours2Field[target_i].size()-6){
+                       for(int k=m_tfCore->contours2Field[target_i].size()-5;k<m_tfCore->contours2Field[target_i].size();k++)
+                           points.push_back(cv::Point2f(m_tfCore->contours2Field[target_i][k].x,m_tfCore->contours2Field[target_i][k].y));
+                    }else{
+                       for(int k=target_j-2;k<target_j+3;k++)
+                           points.push_back(cv::Point2f(m_tfCore->contours2Field[target_i][k].x,m_tfCore->contours2Field[target_i][k].y));
+                    }
+                    cv::Vec4f line;
+                    cv::fitLine(cv::Mat(points), line, CV_DIST_L2, 0, 0.01, 0.01);
+                    icVector2 tmp_vec(-line[1],line[0]);
+                    if(dot(tmp_vec,tmp_dir)<0) tmp_vec=-tmp_vec;
+                    isAdd_push=true;
+                    outside_push=tmp_vec;
+                }
+            }
+            //
             /*change to use other integration scheme */
 			if(get_nextpt_RK23_ten_quad(pre_point, globalp, face_id, type))
 			//if(get_nextpt_2ndeuler_ten_quad(pre_point, globalp, face_id, type))
@@ -535,28 +608,28 @@ int EvenStreamlinePlace::trace_majRoad_in_quad(int &face_id, double globalp[2], 
                     }
 
                 }
-				////We may also need to compare the current point with the sampling point on itself!
-				if(close_to_cur_samplePt(globalp, face_id, samplepts[evenstreamlines->ntrajs]->samples,
-					samplepts[evenstreamlines->ntrajs]->nsamples, loopsep, discsize, sample_interval)) //scale the separate distance
-				{
-					if(!evenstreamlines->trajs[evenstreamlines->ntrajs]->store_to_global_line_segs
-						(temp_point_list, NumPoints))
-					{
-						////Not enough memory
-						flag = 4;
-						free(temp_point_list);
-						return face_id;
-					}
+//				////We may also need to compare the current point with the sampling point on itself!
+//				if(close_to_cur_samplePt(globalp, face_id, samplepts[evenstreamlines->ntrajs]->samples,
+//					samplepts[evenstreamlines->ntrajs]->nsamples, loopsep, discsize, sample_interval)) //scale the separate distance
+//				{
+//					if(!evenstreamlines->trajs[evenstreamlines->ntrajs]->store_to_global_line_segs
+//						(temp_point_list, NumPoints))
+//					{
+//						////Not enough memory
+//						flag = 4;
+//						free(temp_point_list);
+//						return face_id;
+//					}
 
-                    flag = 3;
-					free(temp_point_list);
-					return face_id;
-				}
-                if(evenstreamlines->trajs[evenstreamlines->ntrajs]->nlinesegs+NumPoints-1>1000){
-                    free(temp_point_list);
-                    flag=3;
-                    return face_id;
-                }
+//                    flag = 3;
+//					free(temp_point_list);
+//					return face_id;
+//				}
+//                if(evenstreamlines->trajs[evenstreamlines->ntrajs]->nlinesegs+NumPoints-1>1000){
+//                    free(temp_point_list);
+//                    flag=3;
+//                    return face_id;
+//                }
 			}
 
 			else{  ////the curve reach a singularity/degenerate point
@@ -649,7 +722,7 @@ int EvenStreamlinePlace::trace_majRoad_in_quad(int &face_id, double globalp[2], 
 	return face_id;
 }
 
-
+//separatix generation, a little differrence with path generation
 int EvenStreamlinePlace::trace_separatrix_in_quad(int &face_id, double globalp[2], int type,
     double dtest, double loopsep, double dist2sing,
     double sample_interval, double discsize, int &flag,int index,int sep_index){
@@ -1285,12 +1358,15 @@ void EvenStreamlinePlace::reverse_streamline(int streamlineid)
 
 	free(temp);
 }
+
+//path advection
 bool EvenStreamlinePlace::grow_a_majRoad(double seed_p[2], int triangle, double dtest, 
 					double discsize, double Sample_interval, 
 					double loopdsep, double dist2sing, 
 					double streamlinelength, 
                     int type, icVector2 &direction)
 {
+    isAdd_push=false;
 	int i;
 	int flag = -1;
 
@@ -1362,7 +1438,7 @@ bool EvenStreamlinePlace::grow_a_majRoad(double seed_p[2], int triangle, double 
 	////Backward tracing
 	int NUMTRACETRIS = (int)sqrt((double)quadmesh->nfaces);
 
-	for(i = 0; i < 3*NUMTRACETRIS; i++)
+    for(i = 0; i < 3*NUMTRACETRIS; i++)
 	{
 
 		////The cell does not exist. Something is wrong!
@@ -1407,7 +1483,7 @@ bool EvenStreamlinePlace::grow_a_majRoad(double seed_p[2], int triangle, double 
 	return true;
 }
 
-
+// separatrix generation
 bool EvenStreamlinePlace::grow_a_separatrix(double degpt_loc[2],double seed_p[2], int triangle, double dtest,
                                          double discsize, double Sample_interval,
                                          double loopdsep, double dist2sing,
@@ -1527,88 +1603,6 @@ bool EvenStreamlinePlace::grow_a_separatrix(double degpt_loc[2],double seed_p[2]
     return true;
 }
 
-
-SampleListInTriangle * EvenStreamlinePlace::extend_cell_samplelist(SampleListInTriangle *samplepts, int nsamples)
-{
-	if(samplepts == NULL || nsamples == 0)
-	{
-		samplepts = (SampleListInTriangle*)malloc(sizeof(SampleListInTriangle));
-		return samplepts;
-	}
-
-	SampleListInTriangle *temp = samplepts;
-	samplepts = (SampleListInTriangle*)malloc(sizeof(SampleListInTriangle)*(nsamples+1));
-	for(int i=0; i<nsamples; i++)
-		samplepts[i] = temp[i];
-	return samplepts;
-}
-
-void EvenStreamlinePlace::add_sample_to_cell(int triangle, int which_traj, 
-											 int which_sample, bool fieldtype)
-{
-	if(triangle < 0 || triangle >= quadmesh->nfaces)
-		return;
-
-	QuadCell *face = quadmesh->quadcells[triangle];
-
-	if(!fieldtype) /*major*/
-	{
-		face->maj_samplepts = extend_cell_samplelist(face->maj_samplepts, 
-			face->maj_nsamplepts);
-
-		face->maj_samplepts[face->maj_nsamplepts].which_traj = which_traj;
-		face->maj_samplepts[face->maj_nsamplepts].which_sample = which_sample;
-
-		face->maj_nsamplepts++;
-	}
-	else /*minor*/
-	{
-		face->min_samplepts = extend_cell_samplelist(face->min_samplepts, 
-			face->min_nsamplepts);
-
-		face->min_samplepts[face->min_nsamplepts].which_traj = which_traj;
-		face->min_samplepts[face->min_nsamplepts].which_sample = which_sample;
-
-		face->min_nsamplepts++;
-	}
-}
-
-
-
-void EvenStreamlinePlace::reset_placement_quad()
-{
-	int i;
-	QuadCell *face;
-
-	for(i = 0; i < quadmesh->nfaces; i++)
-	{
-		face = quadmesh->quadcells[i];
-		face->visited = false;
-
-		//face->reset_sampleList();
-	}
-    init_samplelist_in_cell();
-
-	for(i = 0; i < quadmesh->nverts; i++)
-	{
-		quadmesh->quad_verts[i]->distance = 1e49;
-		quadmesh->quad_verts[i]->visited = false;
-	}
-}
-void EvenStreamlinePlace::init_samplelist_in_cell()
-{
-	int i;
-	QuadCell *face;
-    for(i=0; i<quadmesh->nfaces; i++)
-    {
-        face = quadmesh->quadcells[i];
-        if(face->maj_samplepts != NULL)
-            free(face->maj_samplepts);
-        face->maj_samplepts = NULL;
-        face->maj_nsamplepts = 0;
-        face->MAJMaxSampNum=0;
-    }
-}
 void EvenStreamlinePlace::init_major_line_info()
 {
 	int i;

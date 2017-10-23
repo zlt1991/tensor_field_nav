@@ -1,3 +1,6 @@
+/***
+ Implementaion of minimum spanning tree
+ ***/
 #ifndef  _MST_H
 #define  _MST_H
 #include "graph.h"

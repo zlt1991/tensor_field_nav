@@ -1,3 +1,6 @@
+/***
+ Simple implementation of information gains for specified topological branch
+ ***/
 #ifndef _CALPATHINFOGAIN_H
 #define _CALPATHINFOGAIN_H
 #include <cuda.h>

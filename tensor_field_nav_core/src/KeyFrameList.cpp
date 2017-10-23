@@ -1,3 +1,6 @@
+/***
+ Implementation of keyframe class for keyframe data storage and time-varying tensor field computing
+ ***/
 #include "tensor_field_nav_core/KeyFrameList.h"
 KeyFrameList::KeyFrameList(int initsize)
 {

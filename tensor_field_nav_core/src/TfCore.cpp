@@ -1,3 +1,6 @@
+/***
+ The core code for robot control including path generation, topology branch selection, tensor field update, obastacle avoidance
+ ***/
 #include"tensor_field_nav_core/TfCore.h"
 
 TfCore::TfCore(ros::NodeHandle private_nh_ ):nh_(),m_it(nh_)
@@ -53,11 +56,10 @@ TfCore::TfCore(ros::NodeHandle private_nh_ ):nh_(),m_it(nh_)
     gridMapTopicName="/projected_map";
     worldFrameId="odom";
     baseFrameId="base_footprint";
-    recoverMode=false;
     ifCancelPath=false;
     ifFinish_goTri=false;
-    ifFinish_recover=false;
-    ifFinish_turn=false;
+    reGenPath=false;
+
     //
     ros::NodeHandle private_nh(private_nh_);
     private_nh.param("world_to_field_scale", realWorld_to_field_scale, realWorld_to_field_scale);
@@ -80,11 +82,7 @@ TfCore::TfCore(ros::NodeHandle private_nh_ ):nh_(),m_it(nh_)
     pathExecuteClient=nh_.serviceClient<pure_pursuit_controller::executePath>("execute_path");
     pathCancelClient=nh_.serviceClient<pure_pursuit_controller::cancelPath>("cancel_path");
     pathCutClient=nh_.serviceClient<pure_pursuit_controller::cutPath>("cut_path");
-    pathRecoverClient=nh_.serviceClient<pure_pursuit_controller::recoverPath>("recover_path");
-    turnDirectClient=nh_.serviceClient<pure_pursuit_controller::recoverPath>("turn_direction");
     finishGoTri=nh_.subscribe("/pure_pursuit_controller/finish_go_tri",1,&TfCore::goTri_callback,this);
-    finish_recover=nh_.subscribe("/pure_pursuit_controller/finish_recover",1,&TfCore::finishRecover_callback,this);
-    finish_turn=nh_.subscribe("/pure_pursuit_controller/finish_turn",1,&TfCore::finishTurn_callback,this);
     //
     robot_loc=new Seed();
     robot_loc->pos[0]=robotInitialPos_x;
@@ -97,7 +95,14 @@ TfCore::TfCore(ros::NodeHandle private_nh_ ):nh_(),m_it(nh_)
 }
 
 TfCore::~TfCore(){
-
+    for(int i=0;i<m_myThreads.size();i++)
+        delete m_myThreads[i];
+    delete quadmesh;
+    delete major_path;
+    delete separatrices;
+    delete keyframes;
+    delete vecsTime;
+    delete vertTimeList;
 }
 
 void TfCore::TfCoreInit(){
@@ -115,10 +120,11 @@ void TfCore::TfCoreInit(){
 	tensor_init_tex();
 
     init_keyframeList();
-    init_recover_points();
     create_paraThread();
 
 }
+
+// for image based flow visualization
 void TfCore::makePatterns(void)
 {
     int lut[256];
@@ -146,6 +152,7 @@ void TfCore::makePatterns(void)
     }
 }
 
+// for image based flow visualization
 void TfCore::make_tens_Patterns(void)
 {
 	int lut[256];
@@ -169,7 +176,7 @@ void TfCore::make_tens_Patterns(void)
 
 				spat[i][j][0] = 
 					spat[i][j][1] = 
-					spat[i][j][2] = (GLubyte)lut[ phase[i][j] % 255];
+                    spat[i][j][2] = (GLubyte)lut[ phase[i][j] % 255];
 				spat[i][j][3] = alpha+5;
 			}
 
@@ -1522,7 +1529,7 @@ void TfCore::compute_separatrixVec_degpt_quad(int degpt_index)
         validDegpts[degpt_index].s_ifLink[i]=true;
 }
 
-
+//calculating the integral direction for every separatrix
 void TfCore::cal_separatrix_vec(){
     Seed *seed1=new Seed;
     Seed *seed2=new Seed;
@@ -1533,6 +1540,7 @@ void TfCore::cal_separatrix_vec(){
         double degpt_loc[2];
         degpt_loc[0]=validDegpts[i].gcx;
         degpt_loc[1]=validDegpts[i].gcy;
+        // if vector of two separatrices are close, then use a simple way to separate.
         if(validDegpts[i].type==1){
             if(fabs(dot(validDegpts[i].s[0],validDegpts[i].s[1]))>0.7){ifTriSepSim=true;target1=0;target2=1;target3=2;}
             else if(fabs(dot(validDegpts[i].s[0],validDegpts[i].s[2]))>0.7){ifTriSepSim=true;target1=0;target2=2;target3=1;}
@@ -1620,7 +1628,7 @@ void TfCore::cal_separatrix_vec(){
 
 
 
-
+//generate separatrix for trisector
 void TfCore::gen_separatrix(){
     reset_separatrices();
     double degpt_loc[2];
@@ -1721,6 +1729,7 @@ void TfCore::gen_major_path(){
         major_path->streamlinelength, 0,m_robotDirect);
 }
 
+//get the location of robot at this time
 void TfCore::listen_to_robot_loc(){
     tf::StampedTransform transform;
     try{
@@ -1749,6 +1758,7 @@ void TfCore::listen_to_robot_loc(){
     m_robotDirect.entry[1]=sin(robot_angel);
 }
 //////////////////////////////////////////////////////////////////////////
+//send points of a branch of trisector to pursuit controller when select one.
 void TfCore::add_separatrix_points_toRobot(Trajectory * target_traj){
     nav_msgs::Path path;
     path.header.frame_id=worldFrameId;
@@ -1781,6 +1791,7 @@ void TfCore::add_separatrix_points_toRobot(Trajectory * target_traj){
     }
 }
 
+//send points of path advection to pursuit controller.
 void TfCore::add_robot_wayPoints()
 {
     Trajectory *cur_traj=major_path->evenstreamlines->trajs[0];
@@ -1806,7 +1817,8 @@ void TfCore::add_robot_wayPoints()
     }
     pure_pursuit_controller::executePath srv;
     srv.request.curPath=path;
-    if(fabs(dot(m_robotDirect,tmp_path_dir))<0.5)
+    normalize(m_robotDirect);
+    if(dot(m_robotDirect,tmp_path_dir)<0.34)
         srv.request.ifFirstPoint=true;
     else
         srv.request.ifFirstPoint=false;
@@ -1828,99 +1840,68 @@ void TfCore::cancelPath(){
         ROS_ERROR("Failed to call service cancel_path");
     }
 }
-void TfCore::init_recover_points(){
-    recoverPoints.clear();
-    for(int i=0;i<SAMPLES_RECOVER;i++)
-    {
-        cv::Point2f tmp;
-        tmp.x=SAMPLES_RADIU*sin(i*2*M_PI/SAMPLES_RECOVER);
-        tmp.y=SAMPLES_RADIU*cos(i*2*M_PI/SAMPLES_RECOVER);
-        recoverPoints.push_back(tmp);
-    }
-}
-void TfCore::recover_robot_state(){
-    listen_to_robot_loc();
-    double max_min_dist=0.0;
-    int target_recoverPoint=0;
-    for (int k=0;k<recoverPoints.size();k++){
-        double cur_min_dist=std::numeric_limits<double>::max();
-        for(int i=0;i<contoursInWorld.size();i++)
-        {
-            for (int j=0;j<contoursInWorld[i].size();j++)
-            {
-                double x_dist=recoverPoints[k].x+robot_world_pos[0]-contoursInWorld[i][j].x;
-                double y_dist=recoverPoints[k].y+robot_world_pos[1]-contoursInWorld[i][j].y;
-                double cur_dist=sqrt(x_dist*x_dist+y_dist*y_dist);
-                if (cur_dist<cur_min_dist)
-                    cur_min_dist=cur_dist;
 
-            }
-        }
-        if (cur_min_dist>max_min_dist)
-        {
-           max_min_dist=cur_min_dist;
-           target_recoverPoint=k;
-        }
-    }
-    ROS_INFO("select reccover point %d!",target_recoverPoint);
-    nav_msgs::Path path;
-    path.header.frame_id=worldFrameId;
-    geometry_msgs::PoseStamped pose;
-    pose.header.stamp = ros::Time::now();
-    pose.pose.position.x=recoverPoints[target_recoverPoint].x+robot_world_pos[0];
-    pose.pose.position.y=recoverPoints[target_recoverPoint].y+robot_world_pos[1];
-    pose.header.frame_id=worldFrameId;
-    pose.pose.position.z=0;
-    pose.pose.orientation.x=0;//no meaning
-    pose.pose.orientation.y=0;
-    pose.pose.orientation.z=0;
-    pose.pose.orientation.w=1;
-    path.poses.push_back(pose);
-    pure_pursuit_controller::recoverPath srv;
-    srv.request.recoverPath=path;
-    if(pathRecoverClient.call(srv)){
-        ROS_INFO("Request recover path");
-        while(!ifFinish_recover){
-            sleep(2);
-            ros::spinOnce();
-        }
-        ifFinish_recover=false;
-        recoverMode=false;
-    }
-    else{
-        ROS_ERROR("Failed to call service recover_path");
-    }
-}
-
+// set regular constraints for tensor field calculatiion
 void TfCore::setRegularElems(){
-
     constraints_vecs.clear();
+    //get regular elements from obstacle contours.
     for(int i=0;i<contours2Field.size();i++)
     {
         if (contours2Field[i].size()<10)
             continue;
         std::vector<icVector2> cur_vecs;
-        for (int j=0;j<contours2Field[i].size()-1;j++)
+        for (int j=0;j<contours2Field[i].size();j++)
         {
-           std::vector<cv::Point2f> points;
-           icVector2 tmp_dir(contours2Field[i][j+1].x-contours2Field[i][j].x,contours2Field[i][j+1].y-contours2Field[i][j].y);
-           float cur_strength=length(tmp_dir);
-           if(j<3){
-               for(int k=0;k<5;k++)
-                   points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
-           }else if(j>contours2Field[i].size()-6){
-               for(int k=contours2Field[i].size()-5;k<contours2Field[i].size();k++)
-                   points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
-           }else{
-               for(int k=j-2;k<j+3;k++)
-                   points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+           if(j<contours2Field[i].size()-1){
+               std::vector<cv::Point2f> points;
+               icVector2 tmp_dir(contours2Field[i][j+1].x-contours2Field[i][j].x,contours2Field[i][j+1].y-contours2Field[i][j].y);
+               float cur_strength=length(tmp_dir);
+               if(j<3){
+                   for(int k=0;k<5;k++)
+                       points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+               }else if(j>contours2Field[i].size()-6){
+                   for(int k=contours2Field[i].size()-5;k<contours2Field[i].size();k++)
+                       points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+               }else{
+                   for(int k=j-2;k<j+3;k++)
+                       points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+               }
+               cv::Vec4f line;
+               cv::fitLine(cv::Mat(points), line, CV_DIST_L2, 0, 0.01, 0.01);
+               icVector2 tmp_vec(line[0],line[1]);
+               if(dot(tmp_vec,tmp_dir)<0) tmp_vec=-tmp_vec;
+               tmp_vec=tmp_vec*cur_strength;
+               cur_vecs.push_back(tmp_vec);
+           }else
+           {
+               std::vector<cv::Point2f> points;
+               icVector2 testEnd2start=(contours2Field[i][0].x-contours2Field[i][j].x,contours2Field[i][0].y-contours2Field[i][j].y);
+               icVector2 tmp_dir;
+               float cur_strength;
+               if(length(testEnd2start)<0.015)
+               {
+                   tmp_dir=testEnd2start;
+                   cur_strength=length(tmp_dir);
+                   points.push_back(cv::Point2f(contours2Field[i][0].x,contours2Field[i][0].y));
+                   points.push_back(cv::Point2f(contours2Field[i][j].x,contours2Field[i][j].y));
+                   points.push_back(cv::Point2f(contours2Field[i][j-1].x,contours2Field[i][j-1].y));
+               }else{
+                  tmp_dir=(contours2Field[i][j].x-contours2Field[i][j-1].x,contours2Field[i][j].y-contours2Field[i][j-1].y);
+                  cur_strength=length(tmp_dir);
+                  points.push_back(cv::Point2f(contours2Field[i][j].x,contours2Field[i][j].y));
+                  points.push_back(cv::Point2f(contours2Field[i][j-1].x,contours2Field[i][j-1].y));
+                  points.push_back(cv::Point2f(contours2Field[i][j-2].x,contours2Field[i][j-2].y));
+               }
+               cv::Vec4f line;
+               cv::fitLine(cv::Mat(points), line, CV_DIST_L2, 0, 0.01, 0.01);
+               icVector2 tmp_vec(line[0],line[1]);
+               if(dot(tmp_vec,tmp_dir)<0) tmp_vec=-tmp_vec;
+               tmp_vec=tmp_vec*cur_strength;
+               cur_vecs.push_back(tmp_vec);
+
            }
-           cv::Vec4f line;
-           cv::fitLine(cv::Mat(points), line, CV_DIST_L2, 0, 0.01, 0.01);
-           icVector2 tmp_vec(line[0],line[1]);
-           if(dot(tmp_vec,tmp_dir)<0) tmp_vec=-tmp_vec;
-           tmp_vec=tmp_vec*cur_strength;
-           cur_vecs.push_back(tmp_vec);
+
+
         }
         constraints_vecs.push_back(cur_vecs);
     }
@@ -1940,17 +1921,12 @@ void TfCore::setRegularElems(){
 
 }
 
-void TfCore::finishRecover_callback(const std_msgs::String &msg){
-    ifFinish_recover=true;
-}
-
-void TfCore::finishTurn_callback(const std_msgs::String &msg){
-    ifFinish_turn=true;
-}
 
 void TfCore::goTri_callback(const std_msgs::String &msg){
     ifFinish_goTri=true;
 }
+
+//get 3d obstacle information from octomap
 void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
     if(!isReceiveNewMap)
         isReceiveNewMap=true;
@@ -1983,61 +1959,72 @@ void TfCore::gridMap_callback(const nav_msgs::OccupancyGrid &msg){
             }
         }
     }
-    get_obstacles_contour();
-    if(!recoverMode)
-    {
-        ensure_robot_safety();
-        cut_robot_path();
-    }
+    get_obstacles_contour();//calculate obstacle contours
+    ensure_robot_safety(); // avoid path rushing into obstacles.
 }
 
 void TfCore::frontier_point_callback(const std_msgs::Float64MultiArray &msg){
     frontierPoints=msg;
 }
 
+//core constrol function
 void TfCore::set_obstacles(){
+    //reset regular elements
     reset_regular_and_degenrateElem();
     bresenham_line_points.clear();
     validTriDegpts.clear();
     ifCancelPath=false;
+    //calculate tensor field for current frame (after each periodic scanning)
     setRegularElems();
     parallel_update_tensorField();
     init_degpts();
     render_alpha_map_quad();
     locate_degpts_cells_tranvec_quad();
+    //set keyframe and get current location of robot
     NUM_Slices+=interFrameNum;
     set_cur_as_keyframe(NUM_Slices);
     listen_to_robot_loc();
+    //
     if(enRelaxKeyframeOn)
       Laplace_relax_timeDep();
-    if(major_path->evenstreamlines->ntrajs!=0 && ifReachTrisector && check_reach_trisector()){
+
+    //check for whether the robot is at a trisector and ready to select a branch for scanning
+    if(major_path->evenstreamlines->ntrajs!=0 && ifReachTrisector && check_reach_trisector()){ // reach a trisector
         reset_major_path();
         gen_separatrix();
         cal_sep_infoGain();
         select_target_trisector_branch_move();
-    }else{
+    }else{  //no reach a trisector
         reset_separatrices();
         ifReachTrisector=false;
         reset_major_path();
         gen_major_path();
         cut_robot_path();
-        if( major_path->evenstreamlines->trajs[0]->nlinesegs<10 || major_path->evenstreamlines->trajs[0]->get_length()*realWorld_to_field_scale<THRESHOLD_LENGTH)
+        if(reGenPath) //if too close to obstacles
         {
-
-            curSliceID=keyframes->keyframes[keyframes->nkeyframes-1]->keyFrameID;
-            update_tensor_field();
-            if(check_reach_wedge())
-                req_turn_service();
-            else
-                recoverMode=true;
-            return;
+            reset_major_path();
+            gen_major_path();
+            cut_robot_path();
         }
+        reGenPath=false;
+//        if( major_path->evenstreamlines->trajs[0]->nlinesegs<10 || major_path->evenstreamlines->trajs[0]->get_length()*realWorld_to_field_scale<THRESHOLD_LENGTH)
+//        {
+
+//            curSliceID=keyframes->keyframes[keyframes->nkeyframes-1]->keyFrameID;
+//            update_tensor_field();
+//            if(check_reach_wedge())
+//                req_turn_service();
+//            else
+//                recoverMode=true;
+//            return;
+//        }
         add_robot_wayPoints();
     }
     curSliceID=keyframes->keyframes[keyframes->nkeyframes-2]->keyFrameID+1;
-    play_all_frames();
+    play_all_frames();// time-varying tensor field updating
 }
 
+// time-varying tensor field updating
 void TfCore::play_all_frames()
 {
     int t=0;
@@ -2045,7 +2032,6 @@ void TfCore::play_all_frames()
     {
         ros::spinOnce();
         ifFinish_goTri=false;
-        ifFinish_recover=false;
         update_tensor_field();
         filterDegpts();
         cal_separatrix_vec();
@@ -2067,6 +2053,9 @@ void TfCore::play_all_frames()
     }
 }
 
+//a mechanism to detect whether the robot is passing by a trisector
+//examine whether the robot path first approaches and the leaves away a trisector,with the minimal
+//distance to the trisector less than a given threshold.
 bool TfCore::check_bypass_trisector(){
     validTriDegpts.clear();
     std::vector<DegeneratePt> tmp_validTriDegpts;
@@ -2075,7 +2064,7 @@ bool TfCore::check_bypass_trisector(){
     std::vector<int > all_indexes;
     if(major_path->evenstreamlines->ntrajs==0) return false;
     Trajectory *cur_traj= major_path->evenstreamlines->trajs[0];
-    for(int i=0;i<validDegpts.size();i++){
+    for(int i=0;i<validDegpts.size();i++){ // examine every trisector to see if it conform the condition
         if(validDegpts[i].type==1 && validDegpts[i].nseps==3){
             float cur_min_dist=std::numeric_limits<float>::max();
             int target_min_index=-1;
@@ -2133,7 +2122,7 @@ bool TfCore::check_bypass_trisector(){
             }
         }
     }
-    if(tmp_validTriDegpts.size()>=1){
+    if(tmp_validTriDegpts.size()>=1){ // if more than one trisector satisfy the condition, then select the nearest one.
         auto smallest = std::min_element(std::begin(all_min_dists), std::end(all_min_dists));
         int smallest_index=std::distance(std::begin(all_min_dists),smallest);
         int target_tri_index=all_indexes[smallest_index];
@@ -2148,7 +2137,7 @@ bool TfCore::check_bypass_trisector(){
         listen_to_robot_loc();
         robot_cur_pos[0]=robot_loc->pos[0];
         robot_cur_pos[1]=robot_loc->pos[1];
-
+        //send the path between location of robot and the trisector to puresuit controller(reaching to the trisector)
         locat_point_inMap(robot_cur_pos,robot_cur_loc);
         bresenham_line_points.clear();
         CalcBresenhamLocs(Location(target_tri_loc.x,target_tri_loc.y),Location(robot_cur_loc.x,robot_cur_loc.y),bresenham_line_points);
@@ -2244,6 +2233,7 @@ void TfCore::draw_map_contour(){
 
 }
 
+//calulate the obstacle contours by using opencv
 void TfCore::get_obstacles_contour(){
       cv::Mat img = cv::Mat::zeros(dirMap.info.height, dirMap.info.width, CV_8UC1);
       dirMap2Field.clear();
@@ -2277,7 +2267,7 @@ void TfCore::get_obstacles_contour(){
 
       contours.clear();
       std::vector<cv::Vec4i> hierarchy;
-      cv::findContours(img, contours, hierarchy, CV_RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+      cv::findContours(img, contours, hierarchy, CV_RETR_LIST, cv::CHAIN_APPROX_NONE);
       contours2Field.clear();
       contoursInWorld.clear();
       for( size_t k = 0; k < contours.size(); k++ )
@@ -2292,6 +2282,7 @@ void TfCore::get_obstacles_contour(){
       }
 }
 
+//avoiding the path rushing into obstacles
 void TfCore::cut_robot_path(){
     if(major_path->evenstreamlines->ntrajs==0) return;
     Trajectory *cur_traj = major_path->evenstreamlines->trajs[0];
@@ -2299,6 +2290,7 @@ void TfCore::cut_robot_path(){
     int maxNum=Num;
     if(maxNum>cur_traj->nlinesegs)
         maxNum=cur_traj->nlinesegs;
+    bool is_turn_sharp=false;
     for (int k=0;k<maxNum;k++){
         for(int i=0;i<contours2Field.size();i++)
         {
@@ -2306,19 +2298,50 @@ void TfCore::cut_robot_path(){
             {
                 double x_dist=cur_traj->linesegs[k].gstart[0]-contours2Field[i][j].x;
                 double y_dist=cur_traj->linesegs[k].gstart[1]-contours2Field[i][j].y;
+                if(!is_turn_sharp && k>1){
+                    icVector2 now(cur_traj->linesegs[k].gend[0]-cur_traj->linesegs[k].gstart[0],cur_traj->linesegs[k].gend[1]-cur_traj->linesegs[k].gstart[1]);
+                    icVector2 pre(cur_traj->linesegs[k-1].gend[0]-cur_traj->linesegs[k-1].gstart[0],cur_traj->linesegs[k-1].gend[1]-cur_traj->linesegs[k-1].gstart[1]);
+                    normalize(now);
+                    normalize(pre);
+                    if(dot(now,pre)<0.10)
+                    {
+                        is_turn_sharp=true;
+                        cur_traj->nlinesegs=k-1;
+                    }
+                }
                 double cur_dist=sqrt(x_dist*x_dist+y_dist*y_dist);
                 cur_dist=cur_dist*realWorld_to_field_scale;
                 if (cur_dist<DANGERDIST)
                 {
-                    cur_traj->nlinesegs=k;
-                    pure_pursuit_controller::cutPath srv;
-                    srv.request.safeWayPoint=k;
-                    if(pathCutClient.call(srv))
-                    {
-                        ROS_INFO("Request cut path");
-                    }else{
-                        ROS_ERROR("Failed to call service cut_path");
-                    }
+                    reGenPath=true;
+//                    icVector2 tmp_dir(x_dist,y_dist);
+//                    //
+//                    std::vector<cv::Point2f> points;
+//                    if(j<3){
+//                       for(int k=0;k<5;k++)
+//                           points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+//                    }else if(j>contours2Field[i].size()-6){
+//                       for(int k=contours2Field[i].size()-5;k<contours2Field[i].size();k++)
+//                           points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+//                    }else{
+//                       for(int k=j-2;k<j+3;k++)
+//                           points.push_back(cv::Point2f(contours2Field[i][k].x,contours2Field[i][k].y));
+//                    }
+//                    cv::Vec4f line;
+//                    cv::fitLine(cv::Mat(points), line, CV_DIST_L2, 0, 0.01, 0.01);
+//                    icVector2 tmp_vec(-line[1],line[0]);
+//                    if(dot(tmp_vec,tmp_dir)<0) tmp_vec=-tmp_vec;
+//                    outside_push=tmp_vec;
+//                    //
+//                    cur_traj->nlinesegs=k;
+//                    pure_pursuit_controller::cutPath srv;
+//                    srv.request.safeWayPoint=k;
+//                    if(pathCutClient.call(srv))
+//                    {
+//                        ROS_INFO("Request cut path");
+//                    }else{
+//                        ROS_ERROR("Failed to call service cut_path");
+//                    }
                     return;
                 }
             }
@@ -2326,6 +2349,7 @@ void TfCore::cut_robot_path(){
     }
 }
 
+//calculate information gain for each separatrix
 void TfCore::cal_sep_infoGain(){
     degptsPathsInfoGain.clear();
     float *pointCollection=new float[frontierPoints.data.size()];
@@ -2361,6 +2385,7 @@ void TfCore::cal_sep_infoGain(){
     delete pointCollection;
 }
 
+//check whether the robot is at a trisector
 bool TfCore::check_reach_trisector(){
     listen_to_robot_loc();
     if(validDegpts.size()==0) return false;
@@ -2401,12 +2426,13 @@ void TfCore::ensure_robot_safety(){
             {
                 cancelPath();
                 ifCancelPath=true;
-                recoverMode=true;
                 return;
             }
         }
     }
 }
+
+//reset tensor field
 void TfCore::reset_regular_and_degenrateElem(){
     /*initialize regular design element*/
     free(ten_regularelems);
@@ -2471,6 +2497,7 @@ void TfCore::locat_point_inMap(double pos[2],cv::Point2i &mapLoc){
     mapLoc.x=lowerY;
 }
 
+// filter degenerate points which are in obstacles
 void TfCore::filterDegpts(){
     if(ndegpts==0) return;
     validDegpts.clear();
@@ -2573,7 +2600,7 @@ void TfCore::display_valid_degenerate_pts(GLenum mode)
 }
 
 
-//
+//laplace system for time-varying tensor field
 
 void TfCore::get_laplace_TVTF(int which_slice){
     /*  We now save the read file into the vec variable of the mesh  */
@@ -2704,7 +2731,7 @@ void TfCore::cal_TF_at_slice_keyframe_interp(int which_slice)
     {
         if(keyframeID2 < 0)
         {
-            ROS_ERROR("out of range, cur slice id is %d",which_slice);
+            //ROS_ERROR("out of range, cur slice id is %d",which_slice);
             /*   we may have to use relaxation to obtain the slices after the last key frame slice   */
         }
 
@@ -3496,38 +3523,6 @@ void TfCore::select_target_trisector_branch_move(){
     Trajectory *target_branch=select_a_branch(cur_mst,selected_target_tri);
     add_separatrix_points_toRobot(target_branch);
 }
-
-void TfCore::req_turn_service(){
-    nav_msgs::Path path;
-    path.header.frame_id=worldFrameId;
-    geometry_msgs::PoseStamped pose;
-    pose.header.stamp = ros::Time::now();
-    pose.pose.position.x=0;
-    pose.pose.position.y=0;
-    pose.header.frame_id=worldFrameId;
-    pose.pose.position.z=0;
-    pose.pose.orientation.x=0;//no meaning
-    pose.pose.orientation.y=0;
-    pose.pose.orientation.z=0;
-    pose.pose.orientation.w=1;
-    path.poses.push_back(pose);
-    pure_pursuit_controller::recoverPath srv;
-    srv.request.recoverPath=path;
-    if(turnDirectClient.call(srv)){
-        ROS_INFO("Request turn direction");
-        ifFinish_turn=false;
-        while(!ifFinish_turn){
-            sleep(2);
-            ros::spinOnce();
-            if(ifCancelPath) break;
-        }
-        //ifFinish_turn=false;
-    }
-    else{
-        ROS_ERROR("Failed to call service turn direction");
-    }
-}
-
 
 bool TfCore::check_reach_wedge(){
     if(major_path==NULL || major_path->evenstreamlines->ntrajs==0) return false;

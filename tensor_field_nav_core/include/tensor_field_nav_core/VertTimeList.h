@@ -1,3 +1,6 @@
+/***
+ basic structure for vertex in frame, used for contructing spatial-temporal constraints.
+ ***/
 #ifndef _VERTTIMELIST_H
 #define _VERTTIMELIST_H
 #include "dataStructure.h"

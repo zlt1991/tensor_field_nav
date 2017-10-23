@@ -1,3 +1,6 @@
+/***
+ Some useful functions
+***/
 #include "tensor_field_nav_core/Util.h"
 
 void transform_point3D(float p[3], float rot_mat[16])

@@ -1,3 +1,6 @@
+/***
+ The core code for robot control including path generation, topology branch selection, tensor field update, obastacle avoidance
+ ***/
 #ifndef _TfCore_H
 #define _TfCore_H
 
@@ -107,7 +110,6 @@ public:
     std::vector<std::vector<cv::Point2f> > contours2Field;
     std::vector<std::vector<cv::Point2f> > contoursInWorld;
     std::vector<std::vector<icVector2> > constraints_vecs;
-    std::vector<cv::Point2f> recoverPoints;
 
     icVector2 m_robotDirect;
     icVector2 m_globalDirect;
@@ -120,7 +122,8 @@ public:
     float rightTop[2];
     std::vector<Location> bresenham_line_points;
     int selected_target_tri;
-
+    bool reGenPath;
+    icVector2 outside_push;
 ///
     //ros
     ros::NodeHandle nh_;
@@ -131,8 +134,6 @@ public:
     ros::Publisher safetyWayPointNum_pub;
     ros::Subscriber frontierPoints_sub;
     ros::Subscriber finishGoTri;
-    ros::Subscriber finish_recover;
-    ros::Subscriber finish_turn;
     image_transport::Publisher rgb_pub;
     image_transport::ImageTransport m_it;
     nav_msgs::OccupancyGrid dirMap;
@@ -140,16 +141,12 @@ public:
     ros::ServiceClient pathExecuteClient;
     ros::ServiceClient pathCancelClient;
     ros::ServiceClient pathCutClient;
-    ros::ServiceClient pathRecoverClient;
-    ros::ServiceClient turnDirectClient;
     ros::ServiceClient reqCalDegptPathsInfoClient;
 
     unsigned char  *rgb_im;
     std_msgs::Float64MultiArray frontierPoints;
 
     bool ifFinish_goTri;
-    bool ifFinish_recover;
-    bool ifFinish_turn;
 
 
     //
@@ -249,8 +246,6 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////
     //ros
-    void finishRecover_callback(const std_msgs::String &msg);
-    void finishTurn_callback(const std_msgs::String &msg);
     void gridMap_callback(const nav_msgs::OccupancyGrid &msg);
     void goTri_callback(const std_msgs::String &msg);
     void frontier_point_callback(const std_msgs::Float64MultiArray &msg);
@@ -261,8 +256,6 @@ public:
     void ensure_robot_safety();
     void cancelPath();
     void cut_robot_path();
-    void recover_robot_state();
-    void req_turn_service();
 
     //topo connection
     void filterDegpts();
@@ -298,7 +291,6 @@ public:
     void gen_major_path();
     void reset_major_path();
     void set_robot_loc(double x,double y);
-    void init_recover_points();
     void init_majorPath();
     void locat_point_inMap(double pos[2],cv::Point2i &mapLoc);
     bool check_reach_wedge();

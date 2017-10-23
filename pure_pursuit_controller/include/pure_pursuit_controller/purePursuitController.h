@@ -67,8 +67,7 @@ protected:
   bool goTriExecute(pure_pursuit_controller::executePath::Request &req,pure_pursuit_controller::executePath::Response &res);
   bool pathCancel(pure_pursuit_controller::cancelPath::Request &req, pure_pursuit_controller::cancelPath::Response &res);
   bool pathCut(pure_pursuit_controller::cutPath::Request &req, pure_pursuit_controller::cutPath::Response &res);
-  bool pathRecover(pure_pursuit_controller::recoverPath::Request &req, pure_pursuit_controller::recoverPath::Response &res);
-  bool turnDirect(pure_pursuit_controller::recoverPath::Request &req, pure_pursuit_controller::recoverPath::Response &res);
+
   /// Odometry message callback
   void odometryCallback(const nav_msgs::Odometry &msg);
   /// Timer callback
@@ -89,12 +88,8 @@ protected:
   ros::ServiceServer _pathExecute;
   ros::ServiceServer _pathCancel;
   ros::ServiceServer _pathCut;
-  ros::ServiceServer _pathRecover;
-  ros::ServiceServer _turnDirect;
   ///
   ros::Publisher _finishGoTri;
-  ros::Publisher _finishRecover;
-  ros::Publisher _finishTurn;
   /// Path message topic name
   std::string _pathExecuteServerName;
 
@@ -107,15 +102,10 @@ protected:
   int _queueDepth;
   bool isFinish;
   int safeWayNum;
-  bool recoverMode;
-  bool recoverTurn;
   bool ifGoTrisector;
   bool ifFirstPoint;
   bool ifCutPath;
-  bool ifTurnDirect;
-  double turnAngle;
 
-  geometry_msgs::PoseStamped backup_pose;
   /// Current reference path
   nav_msgs::Path _currentReferencePath;
   /// Current velocity

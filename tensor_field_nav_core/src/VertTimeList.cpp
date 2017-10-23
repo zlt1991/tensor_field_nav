@@ -1,3 +1,6 @@
+/***
+ basic structure for vertex in frame, used for contructing spatial-temporal constraints.
+ ***/
 #include "tensor_field_nav_core/VertTimeList.h"
 VertTimeList::VertTimeList(int nverts, int initsize)
 {

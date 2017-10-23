@@ -39,14 +39,8 @@ PurePursuitControllerNode::PurePursuitControllerNode(const ros::NodeHandle &nh) 
   _pathExecute = _nodeHandle.advertiseService("/execute_path",&PurePursuitControllerNode::pathExecute, this);
   _pathCancel=_nodeHandle.advertiseService("/cancel_path",&PurePursuitControllerNode::pathCancel,this);
   _pathCut=_nodeHandle.advertiseService("/cut_path",&PurePursuitControllerNode::pathCut,this);
-  _pathRecover=_nodeHandle.advertiseService("/recover_path",&PurePursuitControllerNode::pathRecover,this);
-  _turnDirect=_nodeHandle.advertiseService("/turn_direction",&PurePursuitControllerNode::turnDirect,this);
   _finishGoTri=_nodeHandle.advertise<std_msgs::String>("finish_go_tri",1);
-  _finishRecover=_nodeHandle.advertise<std_msgs::String>("finish_recover",1);
-  _finishTurn=_nodeHandle.advertise<std_msgs::String>("finish_turn",1);
   isFinish = false;
-  recoverMode=false;
-  recoverTurn=false;
   ifGoTrisector=false;
   ifFirstPoint=false;
   safeWayNum=std::numeric_limits<double>::max();
@@ -87,6 +81,7 @@ bool PurePursuitControllerNode::pathExecute(pure_pursuit_controller::executePath
     res.success=true;
     return true;
 }
+
 bool PurePursuitControllerNode::goTriExecute(pure_pursuit_controller::executePath::Request &req,pure_pursuit_controller::executePath::Response &res)
 {
     resetParam();
@@ -111,34 +106,6 @@ bool PurePursuitControllerNode::pathCut(pure_pursuit_controller::cutPath::Reques
     return true;
 }
 
-bool PurePursuitControllerNode::pathRecover(pure_pursuit_controller::recoverPath::Request &req, pure_pursuit_controller::recoverPath::Response &res){
-    resetParam();
-    _currentReferencePath = req.recoverPath;
-    recoverMode=true;
-    recoverTurn=true;
-    backup_pose=getCurrentPose();
-    ROS_INFO("receive recover path msg");
-    res.success=true;
-    return true;
-}
-
-bool PurePursuitControllerNode::turnDirect(pure_pursuit_controller::recoverPath::Request &req, pure_pursuit_controller::recoverPath::Response &res){
-    resetParam();
-    ifTurnDirect=true;
-    _currentReferencePath = req.recoverPath;
-    geometry_msgs::PoseStamped origin = getCurrentPose();
-    //
-    double x = origin.pose.orientation.x;
-    double y = origin.pose.orientation.y;
-    double z = origin.pose.orientation.z;
-    double w = origin.pose.orientation.w;
-    double robot_angel = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-    turnAngle=robot_angel+M_PI;
-
-    ROS_INFO("receive turn direction msg");
-    return true;
-}
-
 void PurePursuitControllerNode::odometryCallback(const nav_msgs::Odometry &
                                                      msg)
 {
@@ -150,12 +117,9 @@ void PurePursuitControllerNode::resetParam(){
     _currentReferencePath.poses.clear();
     safeWayNum=std::numeric_limits<int>::max();
     isFinish=false;
-    recoverMode=false;
-    recoverTurn=false;
     ifFirstPoint=false;
     ifGoTrisector=false;
     ifCutPath=false;
-    ifTurnDirect=false;
 }
 
 void PurePursuitControllerNode::spin()
@@ -183,11 +147,6 @@ void PurePursuitControllerNode::timerCallback(const ros::TimerEvent &
             _finishGoTri.publish(msg);
           ifGoTrisector=false;
       }
-  }
-
-  if(!recoverMode){
-    if(isFinish)
-        resetParam();
   }
 
 }
@@ -255,61 +214,9 @@ bool PurePursuitControllerNode::step(geometry_msgs::Twist &twist)
     }
 
     double angel = robot_angel - line_angel;
-    if(ifTurnDirect){
-        angel=turnAngle-robot_angel;
-        twist.linear.x = 0;
-        if(std::sin(angel)>0)
-          twist.angular.z = -0.4;
-        else
-          twist.angular.z = 0.4;
-        if (std::abs(angel) < M_PI/6)
-        {
-            resetParam();
-            std_msgs::String msg;
-            for(int i=0;i<2;i++)
-              _finishTurn.publish(msg);
-        }
-        return true;
-    }
-
     double r = distance / (2 * std::sin(angel));
     angularVelocity = -linearVelocity / r;
 
-    if(recoverMode){
-      if(recoverTurn){
-          twist.linear.x = 0;
-          if(std::sin(angel)>0)
-            twist.angular.z = -0.4;
-          else
-            twist.angular.z = 0.4;
-          if (std::abs(angel) < M_PI/8)
-              recoverTurn=false;
-          return true;
-      }
-
-    }
-    if(recoverMode)
-      if(isFinish){
-          double x = backup_pose.pose.orientation.x;
-          double y = backup_pose.pose.orientation.y;
-          double z = backup_pose.pose.orientation.z;
-          double w = backup_pose.pose.orientation.w;
-          double robot_origin_angel = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-           double angel = robot_angel - robot_origin_angel;
-           twist.linear.x = 0;
-           if(std::sin(angel)>0)
-             twist.angular.z = -0.4;
-           else
-             twist.angular.z = 0.4;
-           if (std::abs(angel) < M_PI/8)
-           {
-               std_msgs::String msg;
-               for(int i=0;i<2;i++)
-                 _finishRecover.publish(msg);
-               recoverMode=false;
-           }
-           return true;
-      }
 
     if(ifFirstPoint){
         twist.linear.x = 0;

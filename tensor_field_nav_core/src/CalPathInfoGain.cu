@@ -1,3 +1,6 @@
+/***
+ Simple implementation of information gains for specified topological branch
+ ***/
 extern "C" {
 #include "tensor_field_nav_core/CalPathInfoGain.h"
 }

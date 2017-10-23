@@ -1,3 +1,6 @@
+/***
+ Basic structure for streamline
+ ***/
 #ifndef _TRAJECTORY_H
 #define _TRAJECTORY_H
 #include "dataStructure.h"

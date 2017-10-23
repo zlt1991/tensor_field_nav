@@ -1,3 +1,6 @@
+/***
+ Basic structure for list of streamlines
+***/
 #ifndef _TRAJECTORYLIST_H
 #define _TRAJECTORYLIST_H
 #include "dataStructure.h"

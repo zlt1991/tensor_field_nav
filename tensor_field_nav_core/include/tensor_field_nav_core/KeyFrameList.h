@@ -1,3 +1,6 @@
+/***
+ Implementation of keyframe class for keyframe data storage and time-varying tensor field computing
+ ***/
 #ifndef _KEYFRAMELIST_H
 #define _KEYFRAMELIST_H
 #include "dataStructure.h"

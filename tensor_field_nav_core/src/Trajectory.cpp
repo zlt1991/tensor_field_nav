@@ -1,3 +1,6 @@
+/***
+ Basic structure for streamline
+ ***/
 #include "tensor_field_nav_core/Trajectory.h"
 Trajectory::Trajectory(int index, int curMaxNum = 200){
 	this->index = index;

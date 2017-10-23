@@ -1,3 +1,6 @@
+/***
+ Basic data structure for tensor field
+ ***/
 #ifndef _QUADMESH_H
 #define _QUADMESH_H
 #include "dataStructure.h"
